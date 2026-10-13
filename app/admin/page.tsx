@@ -1,55 +1,53 @@
+import Link from "next/link";
+import { getAdminContext } from "@/lib/admin";
 import { signOut } from "@/app/actions/auth";
-import { requireAuthUser } from "@/lib/session";
-import { createSupabaseAdmin } from "@/lib/supabase";
 
 export default async function AdminPage() {
-  const authUser = await requireAuthUser();
-  const supabase = createSupabaseAdmin();
+  const { org, supabase } = await getAdminContext();
 
-  const { data: profile } = await supabase
-    .from("users")
-    .select("role, email, organizations ( name, slug )")
-    .eq("id", authUser.id)
-    .maybeSingle();
-
-  type OrganizationInfo = { name: string; slug: string };
-  const embedded = profile?.organizations as
-    | OrganizationInfo
-    | OrganizationInfo[]
-    | null
-    | undefined;
-  const organization = Array.isArray(embedded) ? embedded[0] : embedded;
+  const { data: boards } = await supabase
+    .from("boards")
+    .select("id, name, slug")
+    .eq("org_id", org.id)
+    .order("created_at");
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-6 p-8">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Админка</h1>
-          <p className="mt-1 text-sm text-foreground/70">
-            Вы вошли как {profile?.email ?? authUser.email}
-          </p>
-        </div>
+    <main className="mx-auto max-w-2xl px-4 py-10">
+      <div className="mb-8 flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">{org.name}</h1>
         <form action={signOut}>
-          <button
-            type="submit"
-            className="h-10 rounded-lg border border-black/[.08] px-4 text-sm font-medium hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-white/[.06]"
-          >
+          <button className="rounded-lg border px-3 py-1.5 text-sm">
             Выйти
           </button>
         </form>
       </div>
-      <section className="rounded-2xl border border-black/[.08] p-6 dark:border-white/[.145]">
-        <p className="text-sm text-foreground/70">Организация</p>
-        <p className="mt-1 text-lg font-medium">
-          {organization?.name ?? "—"}
-        </p>
-        {organization?.slug ? (
-          <p className="mt-1 text-sm text-foreground/60">/{organization.slug}</p>
-        ) : null}
-        <p className="mt-4 text-sm text-foreground/70">
-          Роль: {profile?.role ?? "—"}
-        </p>
-      </section>
+
+      <h2 className="mb-3 text-sm font-medium text-gray-500">Ваши доски</h2>
+      <ul className="space-y-3">
+        {boards?.map((board) => (
+          <li
+            key={board.id}
+            className="flex items-center justify-between rounded-lg border p-4"
+          >
+            <span className="font-medium">{board.name}</span>
+            <div className="flex gap-2 text-sm">
+              <Link
+                href={`/admin/${board.slug}`}
+                className="rounded-lg bg-black px-3 py-1.5 text-white"
+              >
+                Управлять
+              </Link>
+              <Link
+                href={`/${org.slug}/${board.slug}`}
+                className="rounded-lg border px-3 py-1.5"
+                target="_blank"
+              >
+                Публичная страница
+              </Link>
+            </div>
+          </li>
+        ))}
+      </ul>
     </main>
   );
 }

@@ -59,11 +59,15 @@ export async function getAuthUser(): Promise<User | null> {
   });
 
   if (error || !data.session || !data.user) {
-    clearAuthCookies();
+    try {
+      clearAuthCookies();
+    } catch {}
     return null;
   }
 
-  setAuthCookies(data.session.access_token, data.session.refresh_token);
+  try {
+    setAuthCookies(data.session.access_token, data.session.refresh_token);
+  } catch {}
   return data.user;
 }
 
